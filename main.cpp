@@ -4,8 +4,6 @@
 
 using namespace std;
 
-enum { plus, minus, multiply, division };
-
 string Trim( string input );
 vector<int>* Parse( string input, vector<int>& result ) throw (string);
 string Run( vector<int>* input ) throw (string);
@@ -47,13 +45,26 @@ string Trim( string input )
 			input.erase( i+1 );
 
 	// Remove extra whitespaces
-	
+	for( int i(0); i < input.size() - 1; i++ )
+		if( input[i] == ' ' && input[i+1] == ' ' )
+			input.erase( i--, 1 );
+
+	cout << input << endl;
 
 	return input;
 }
 
 vector<int>* Parse( string input, vector<int>& result ) throw (string)
 {
+	const int num_keywords = 1;
+	string keywords[ num_keywords ] = { "temp" };
+
+	for( int i(0); i < num_keywords; i++ )
+		if( input.compare( keywords[i] ) == 0 )
+		{
+			input.erase( 0, keywords[i].size() );
+			// Add the numerical representation of keyword to result
+		}
 	return &result;
 }
 
