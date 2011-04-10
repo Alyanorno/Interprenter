@@ -102,6 +102,7 @@ vector<int>* Parse( string input, vector<int>& result ) throw (string)
 				result.push_back( (int)words[i][k] );
 		}
 	}
+	delete[] words;
 	return &result;
 }
 
