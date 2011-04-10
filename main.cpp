@@ -1,11 +1,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cassert>
 
 using namespace std;
 
 const int num_keywords = 1;
-enum { temp };
+enum { not_a_keyword, temp };
 string keywords[ num_keywords ] = { "temp" };
 
 string Trim( string input );
@@ -58,25 +59,49 @@ string Trim( string input )
 	return input;
 }
 
-#define IF_ADD_KEYWORD( KEYWORD ) \
-	else if( keywords[i] == #KEYWORD ) \
-		result.push_back( KEYWORD )
-
 vector<int>* Parse( string input, vector<int>& result ) throw (string)
 {
+	int num_words = 1;
 	for( int i(0); i < input.size(); i++ )
+		if( input[i] == ' ' )
+			num_words++;
+	
+	string* words = new string[ num_words ];
+
+	for( int i(0), l(0); i < input.size(); i++ )
+		if( input[i] != ' ' )
+			words[l] += input[i];
+		else
+			l++;
+
+	for( int i(0); i < num_words; i++ )
+	{
 		for( int l(0); l < num_keywords; l++ )
-			if( input.compare( keywords[l] ) == 0 )
+		{
+			if( words[i].compare( keywords[l] ) == 0 )
 			{
-				input.erase( 0, keywords[l].size() );
 				// Add the numerical representation of keyword to result
-				if( false )
-					;
+				#define IF_ADD_KEYWORD( KEYWORD ) \
+					else if( keywords[l] == #KEYWORD ) \
+					result.push_back( KEYWORD )
+				if( false );
 				IF_ADD_KEYWORD( temp );
 				else
-					// Noot a keyword
-					;
+				{
+					// Should never happen
+					throw("Bug in interprenter, keyword: \"" + words[i] + "\" doesn't exist");
+				}
+				#undef IF_ADD_KEYWORD
+				break;
 			}
+
+			// Not a keyword
+			result.push_back( not_a_keyword );
+			result.push_back( words[i].size() );
+			for( int k(0); k < words[i].size(); k++ )
+				result.push_back( (int)words[i][k] );
+		}
+	}
 	return &result;
 }
 
