@@ -54,27 +54,23 @@ string Trim( string input )
 		if( input[i] == ' ' && input[i+1] == ' ' )
 			input.erase( i--, 1 );
 
-	cout << input << endl;
-
 	return input;
 }
 
 vector<int>* Parse( string input, vector<int>& result ) throw (string)
 {
-	int num_words = 1;
+	vector< string > words;
 	for( int i(0); i < input.size(); i++ )
 		if( input[i] == ' ' )
-			num_words++;
+		{
+			words.push_back( input.substr( 0, i ) );
+			input.erase( 0, i + 1 );
+			i = 0;
+		}
+		else if( i == input.size() - 1 )
+			words.push_back( input.substr( 0, i + 1 ) );
 	
-	string* words = new string[ num_words ];
-
-	for( int i(0), l(0); i < input.size(); i++ )
-		if( input[i] != ' ' )
-			words[l] += input[i];
-		else
-			l++;
-
-	for( int i(0); i < num_words; i++ )
+	for( int i(0); i < words.size(); i++ )
 	{
 		for( int l(0); l < num_keywords; l++ )
 		{
@@ -102,7 +98,6 @@ vector<int>* Parse( string input, vector<int>& result ) throw (string)
 				result.push_back( (int)words[i][k] );
 		}
 	}
-	delete[] words;
 	return &result;
 }
 
