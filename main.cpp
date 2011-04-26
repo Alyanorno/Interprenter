@@ -1,13 +1,20 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cassert>
 
 using namespace std;
 
-const int num_keywords = 1;
-enum { not_a_keyword, temp };
-string keywords[ num_keywords ] = { "temp" };
+const int num_keywords = 2;
+enum { temp = 0, leftParens, not_a_keyword = num_keywords };
+string keywords[ num_keywords ] = { "temp", "(" };
+
+struct Statement
+{
+	vector< int > left;
+	int connection;
+	vector< int > right;
+};
+vector< Statement > statements;
 
 string Trim( string input );
 vector<int>* Parse( string input, vector<int>& result ) throw (string);
@@ -72,25 +79,17 @@ vector<int>* Parse( string input, vector<int>& result ) throw (string)
 	
 	for( int i(0); i < words.size(); i++ )
 	{
+		bool found = false;
 		for( int l(0); l < num_keywords; l++ )
-		{
 			if( words[i].compare( keywords[l] ) == 0 )
 			{
-				// Add the numerical representation of keyword to result
-				#define IF_ADD_KEYWORD( KEYWORD ) \
-					else if( keywords[l] == #KEYWORD ) \
-					result.push_back( KEYWORD )
-				if( false );
-				IF_ADD_KEYWORD( temp );
-				else
-				{
-					// Should never happen
-					throw("Bug in interprenter, keyword: \"" + words[i] + "\" doesn't exist");
-				}
-				#undef IF_ADD_KEYWORD
+				// Add the numerical representation of the keyword to result
+				result.push_back( l );
+				found = true;
 				break;
 			}
-
+		if( !found )
+		{
 			// Not a keyword
 			result.push_back( not_a_keyword );
 			result.push_back( words[i].size() );
