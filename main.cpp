@@ -29,6 +29,28 @@ struct Statement
 	vector< int > right;
 	bool isTrue;
 	bool isFalse;
+	operator string()
+	{
+		string result = "";
+		for( int i(0); i < left.size(); i++ )
+			if( left[i] == keyword::not_a_keyword ) {
+				for( int l(0); l < left[i+1]; l++ )
+					result.append( 1, (char)left[i+2+l] );
+				i += left[i+1] + 1;
+			} else {
+				result.append( keywords[ left[i] ] );
+			}
+		result.append( " " + keywords[ connection ] + " " );
+		for( int i(0); i < right.size(); i++ )
+			if( right[i] == keyword::not_a_keyword ) {
+				for( int l(0); l < right[i+1]; l++ )
+					result.append( 1, (char)right[i+2+l] );
+				i += right[i+1] + 1;
+			} else {
+				result.append( keywords[ right[i] ] );
+			}
+		return result;
+	}
 };
 vector< Statement > statements;
 
@@ -127,7 +149,17 @@ string Run( vector<int>& input ) throw (string)
 		cout << input[i] << endl;
 	if( input[ input.size() - 1 ] == keyword::question ) {
 		// Answer the question
-		;
+		for( int i(0); i < statements.size(); i++ )
+		{
+			if( statements[i].left.size() != input.size() - 1 )
+				continue;
+			for( int l(0); l < input.size() - 1; l++ )
+				if( statements[i].left[l] != input[l] )
+					continue;
+			// Found statement
+			return (string)statements[i];
+		}
+		return "No answer defined";
 	} else {
 		// Add a new statement
 		Statement statement;
