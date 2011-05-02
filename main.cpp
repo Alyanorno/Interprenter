@@ -1,24 +1,40 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stack>
 
 using namespace std;
 
-const int num_keywords = 2;
-enum { temp = 0, leftParens, not_a_keyword = num_keywords };
-string keywords[ num_keywords ] = { "temp", "(" };
+const int num_keywords = 6;
+namespace keyword
+	{ enum { temp = 0,
+		 leftParens,
+		 equal,
+		 lessSign,
+		 greaterSign,
+		 question,
+		 not_a_keyword = num_keywords }; }
+string keywords[ num_keywords ] = { "temp",
+				    "(",
+				    "=",
+				    "<",
+				    ">",
+				    "?" };
 
 struct Statement
 {
+	Statement() : isTrue( true ), isFalse( false ) {}
 	vector< int > left;
 	int connection;
 	vector< int > right;
+	bool isTrue;
+	bool isFalse;
 };
 vector< Statement > statements;
 
 string Trim( string input );
-vector<int>* Parse( string input, vector<int>& result ) throw (string);
-string Run( vector<int>* input ) throw (string);
+vector<int>& Parse( string input, vector<int>& result ) throw (string);
+string Run( vector<int>& input ) throw (string);
 int main()
 {
 	string input = "";
@@ -33,7 +49,7 @@ int main()
 		if( line == "quit" )
 			break;
 
-		input.append( " " + line );
+		input.append( Trim( " " + line ) );
 
 		if( input.size() < 2 || input.compare( input.size() - 2, 2, "++" ) != 0 )
 		{
@@ -42,6 +58,7 @@ int main()
 			catch( string error )
 				{ cout << "Error: " << error << endl; }
 			input.clear();
+			result.clear();
 		}
 		else
 			input.erase( input.size() - 2 );
@@ -57,6 +74,10 @@ string Trim( string input )
 			input.erase( i+1 );
 
 	// Remove extra whitespaces
+	for( int i(0); input[i] == ' '; i++ )
+		input.erase( i--, 1 );
+	for( int i( input.size() - 1 ); input[i] == ' '; i-- )
+		input.erase( i, 1 );
 	for( int i(0); i < input.size() - 1; i++ )
 		if( input[i] == ' ' && input[i+1] == ' ' )
 			input.erase( i--, 1 );
@@ -64,7 +85,7 @@ string Trim( string input )
 	return input;
 }
 
-vector<int>* Parse( string input, vector<int>& result ) throw (string)
+vector<int>& Parse( string input, vector<int>& result ) throw (string)
 {
 	vector< string > words;
 	for( int i(0); i < input.size(); i++ )
@@ -72,7 +93,7 @@ vector<int>* Parse( string input, vector<int>& result ) throw (string)
 		{
 			words.push_back( input.substr( 0, i ) );
 			input.erase( 0, i + 1 );
-			i = 0;
+			i = -1;
 		}
 		else if( i == input.size() - 1 )
 			words.push_back( input.substr( 0, i + 1 ) );
@@ -91,17 +112,56 @@ vector<int>* Parse( string input, vector<int>& result ) throw (string)
 		if( !found )
 		{
 			// Not a keyword
-			result.push_back( not_a_keyword );
+			result.push_back( keyword::not_a_keyword );
 			result.push_back( words[i].size() );
 			for( int k(0); k < words[i].size(); k++ )
 				result.push_back( (int)words[i][k] );
 		}
 	}
-	return &result;
+	return result;
 }
 
-string Run( vector<int>* input ) throw (string)
+string Run( vector<int>& input ) throw (string)
 {
+	for( int i( 0 ); i < input.size(); i++ )
+		cout << input[i] << endl;
+	if( input[ input.size() - 1 ] == keyword::question ) {
+		// Answer the question
+		;
+	} else {
+		// Add a new statement
+		Statement statement;
+		int connection;
+		for( int i(0); i < input.size(); i++ )
+		{
+			switch( input[ i ] )
+			{
+				#define SET_STATEMENT( KEYWORD ) \
+					statement.connection = keyword::##KEYWORD; \
+					for( int l(0); l < i; l++ ) \
+						statement.left.push_back( input[ l ] ); \
+					for( int l(i+1); l < input.size(); l++ ) \
+						statement.right.push_back( input[ l ] ); \
+					i = input.size();
+				case keyword::equal:
+					SET_STATEMENT( equal );
+					break;
+				case keyword::lessSign:
+					SET_STATEMENT( lessSign );
+					break;
+				case keyword::greaterSign:
+					SET_STATEMENT( greaterSign );
+					break;
+				case keyword::not_a_keyword:
+					i = i + input[ i + 1 ] + 1;
+					break;
+				#undef SET_STATEMENT
+			}
+			if( i == input.size() - 1 )
+				throw string( "No connection in statement" );
+		}
+		statements.push_back( statement );
+	}
 	return "Running";
 }
 
