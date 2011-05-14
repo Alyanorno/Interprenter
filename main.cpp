@@ -3,68 +3,82 @@
 #include <vector>
 #include <stack>
 
-using namespace std;
-
-const int num_keywords = 6;
+const int num_keywords = 9;
 namespace keyword
 	{ enum { temp = 0,
 		 leftParens,
+		 rightParens,
 		 equal,
+		 notEqual,
 		 lessSign,
 		 greaterSign,
+		 leadsTo,
 		 question,
 		 not_a_keyword = num_keywords }; }
-string keywords[ num_keywords ] = { "temp",
+std::string keywords[ num_keywords ] = { "temp",
 				    "(",
+				    ")",
 				    "=",
+				    "!=",
 				    "<",
 				    ">",
+				    "->",
 				    "?" };
 
 struct Statement
 {
-	Statement() : isTrue( true ), isFalse( false ) {}
-	vector< int > left;
-	int connection;
-	vector< int > right;
-	bool isTrue;
-	bool isFalse;
-	operator string()
+	Statement() : connection(0) {}
+	Statement( std::vector<int>& _left, int _connection, std::vector<int>& _right )
+		: connection( _connection )
 	{
-		string result = "";
+		for( int i(0); i < left.size(); i++ )
+			left.push_back( _left[i] );
+		for( int i(0); i < right.size(); i++ )
+			right.push_back( _right[i] );
+	}
+	std::vector< int > left;
+	int connection;
+	std::vector< int > right;
+	operator std::string()
+	{
+		std::string result = "";
 		for( int i(0); i < left.size(); i++ )
 			if( left[i] == keyword::not_a_keyword ) {
 				for( int l(0); l < left[i+1]; l++ )
 					result.append( 1, (char)left[i+2+l] );
+				result.append( " " );
 				i += left[i+1] + 1;
 			} else {
-				result.append( keywords[ left[i] ] );
+				result.append( keywords[ left[i] ] + " " );
 			}
-		result.append( " " + keywords[ connection ] + " " );
+		if( connection != 0 )
+			result.append( keywords[ connection ] + " " );
 		for( int i(0); i < right.size(); i++ )
 			if( right[i] == keyword::not_a_keyword ) {
 				for( int l(0); l < right[i+1]; l++ )
 					result.append( 1, (char)right[i+2+l] );
+				result.append( " " );
 				i += right[i+1] + 1;
 			} else {
-				result.append( keywords[ right[i] ] );
+				result.append( keywords[ right[i] ] + " " );
 			}
 		return result;
 	}
 };
-vector< Statement > statements;
+std::vector< Statement > statements;
+std::vector< std::vector< int > > stack;
 
-string Trim( string input );
-vector<int>& Parse( string input, vector<int>& result ) throw (string);
-string Run( vector<int>& input ) throw (string);
+std::string Trim( std::string input );
+void Parse( std::string input, std::vector<int>& result ) throw (std::string);
+void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std::string);
+void Calculate( std::vector<int>& input ) throw(std::string);
 int main()
 {
-	string input = "";
-	vector<int> result;
+	std::string input = "";
 	do
 	{
-		string line;
-		getline( cin, line );
+		std::string line;
+		getline( std::cin, line );
 		line = Trim( line );
 		if( line.size() == 0 )
 			continue;
@@ -75,12 +89,18 @@ int main()
 
 		if( input.size() < 2 || input.compare( input.size() - 2, 2, "++" ) != 0 )
 		{
-			try
-				{ cout << Run( Parse( input, result ) ) << endl; }
-			catch( string error )
-				{ cout << "Error: " << error << endl; }
+			try {
+				std::vector<int> outParse;
+				std::vector< Statement > outRun;
+				Parse( input, outParse );
+				Run( outParse, outRun );
+				for( int i(0); i < outRun.size(); i++ )
+					std::cout << (std::string)outRun[i] << std::endl;
+			} catch( std::string error ) {
+				std::cout << "Error: " << error << std::endl;
+			}
 			input.clear();
-			result.clear();
+			stack.clear();
 		}
 		else
 			input.erase( input.size() - 2 );
@@ -88,7 +108,7 @@ int main()
 	while( true );
 }
 
-string Trim( string input )
+std::string Trim( std::string input )
 {
 	// Remove comments
 	for( int i(0); i < input.size() - 1; i++ )
@@ -107,9 +127,9 @@ string Trim( string input )
 	return input;
 }
 
-vector<int>& Parse( string input, vector<int>& result ) throw (string)
+void Parse( std::string input, std::vector<int>& result ) throw (std::string)
 {
-	vector< string > words;
+	std::vector< std::string > words;
 	for( int i(0); i < input.size(); i++ )
 		if( input[i] == ' ' )
 		{
@@ -140,60 +160,85 @@ vector<int>& Parse( string input, vector<int>& result ) throw (string)
 				result.push_back( (int)words[i][k] );
 		}
 	}
-	return result;
 }
 
-string Run( vector<int>& input ) throw (string)
+void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std::string)
 {
 	for( int i( 0 ); i < input.size(); i++ )
-		cout << input[i] << endl;
+		std::cout << input[i] << std::endl;
 	if( input[ input.size() - 1 ] == keyword::question ) {
 		// Answer the question
+		bool foundAnswer = false;
 		for( int i(0); i < statements.size(); i++ )
 		{
-			if( statements[i].left.size() != input.size() - 1 )
-				continue;
-			for( int l(0); l < input.size() - 1; l++ )
-				if( statements[i].left[l] != input[l] )
-					continue;
-			// Found statement
-			return (string)statements[i];
+			if( statements[i].left.size() == input.size() - 1 )
+				for( int l(0); l < input.size() - 1; l++ )
+					if( statements[i].left[l] != input[l] )
+						break;
+					else if( l == input.size() - 2 )
+					{
+						foundAnswer = true;
+						// TO DO: Add arguments to stack
+						Calculate( statements[i].right );
+						// Return the stack as result
+						for( int k(0); k < stack.size(); k++ )
+							result.push_back( Statement( statements[i].left,
+										     statements[i].connection, 
+										     stack[k] ) );
+					}
 		}
-		return "No answer defined";
+		if( !foundAnswer ) {
+			Calculate( input );
+			std::vector<int> empty;
+			for( int k(0); k < stack.size(); k++ )
+				result.push_back( Statement( stack[k], 0, empty ) );
+		}
 	} else {
 		// Add a new statement
 		Statement statement;
-		int connection;
+		int deapthParens = 0;
 		for( int i(0); i < input.size(); i++ )
 		{
 			switch( input[ i ] )
 			{
-				#define SET_STATEMENT( KEYWORD ) \
-					statement.connection = keyword::##KEYWORD; \
-					for( int l(0); l < i; l++ ) \
-						statement.left.push_back( input[ l ] ); \
-					for( int l(i+1); l < input.size(); l++ ) \
-						statement.right.push_back( input[ l ] ); \
-					i = input.size();
 				case keyword::equal:
-					SET_STATEMENT( equal );
-					break;
+				case keyword::notEqual:
 				case keyword::lessSign:
-					SET_STATEMENT( lessSign );
-					break;
 				case keyword::greaterSign:
-					SET_STATEMENT( greaterSign );
+				case keyword::leadsTo:
+					if( deapthParens != 0 )
+						break;
+					statement.connection = input[i];
+					for( int l(0); l < i; l++ )
+						statement.left.push_back( input[ l ] );
+					for( int l(i+1); l < input.size(); l++ )
+						statement.right.push_back( input[ l ] );
+					i = input.size();
 					break;
 				case keyword::not_a_keyword:
 					i = i + input[ i + 1 ] + 1;
 					break;
-				#undef SET_STATEMENT
+				case keyword::leftParens:
+					deapthParens++;
+					break;
+				case keyword::rightParens:
+					deapthParens--;
+					if( deapthParens < 0 )
+						throw std::string( "No matching parens" );
+					break;
 			}
 			if( i == input.size() - 1 )
-				throw string( "No connection in statement" );
+				throw std::string( "No connection in statement" );
 		}
 		statements.push_back( statement );
+		result.push_back( statement );
 	}
-	return "Running";
+}
+
+void Calculate( std::vector<int>& input ) throw(std::string)
+{
+	// start calculating answer
+	// if not a number check stack
+	// create statement from stack and put on result
 }
 
