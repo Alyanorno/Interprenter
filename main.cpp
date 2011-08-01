@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <stack>
@@ -66,12 +67,11 @@ struct Statement
 	}
 };
 std::vector< Statement > statements;
-std::vector< std::vector< int > > stack;
 
 std::string Trim( std::string input );
-void Parse( std::string input, std::vector<int>& result ) throw (std::string);
+void Parse( std::string input, std::vector<int>& result );
 void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std::string);
-void Calculate( std::vector<int>& input ) throw(std::string);
+void Calculate( std::vector<int>& input, std::vector< Statement >& result ) throw(std::string);
 int main()
 {
 	std::string input = "";
@@ -79,6 +79,8 @@ int main()
 	{
 		std::string line;
 		getline( std::cin, line );
+		if( !line.size() )
+			continue;
 		line = Trim( line );
 		if( line.size() == 0 )
 			continue;
@@ -100,7 +102,6 @@ int main()
 				std::cout << "Error: " << error << std::endl;
 			}
 			input.clear();
-			stack.clear();
 		}
 		else
 			input.erase( input.size() - 2 );
@@ -127,7 +128,7 @@ std::string Trim( std::string input )
 	return input;
 }
 
-void Parse( std::string input, std::vector<int>& result ) throw (std::string)
+void Parse( std::string input, std::vector<int>& result )
 {
 	std::vector< std::string > words;
 	for( int i(0); i < input.size(); i++ )
@@ -168,31 +169,7 @@ void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std
 		std::cout << input[i] << std::endl;
 	if( input[ input.size() - 1 ] == keyword::question ) {
 		// Answer the question
-		bool foundAnswer = false;
-		for( int i(0); i < statements.size(); i++ )
-		{
-			if( statements[i].left.size() == input.size() - 1 )
-				for( int l(0); l < input.size() - 1; l++ )
-					if( statements[i].left[l] != input[l] )
-						break;
-					else if( l == input.size() - 2 )
-					{
-						foundAnswer = true;
-						// TO DO: Add arguments to stack
-						Calculate( statements[i].right );
-						// Return the stack as result
-						for( int k(0); k < stack.size(); k++ )
-							result.push_back( Statement( statements[i].left,
-										     statements[i].connection, 
-										     stack[k] ) );
-					}
-		}
-		if( !foundAnswer ) {
-			Calculate( input );
-			std::vector<int> empty;
-			for( int k(0); k < stack.size(); k++ )
-				result.push_back( Statement( stack[k], 0, empty ) );
-		}
+		Calculate( input, result );
 	} else {
 		// Add a new statement
 		Statement statement;
@@ -234,11 +211,64 @@ void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std
 		result.push_back( statement );
 	}
 }
-
-void Calculate( std::vector<int>& input ) throw(std::string)
+/*
+bool IsNumber( std::string& in )
 {
-	// start calculating answer
-	// if not a number check stack
-	// create statement from stack and put on result
+	std::stringstream temp(in);
+	double t;
+	temp >> t;
+	return temp.good();
+}
+std::string ToString( std::vector<int>& in, int start, int size )
+{
+	std::string result;
+	for( int i(start); i < start + size; i++ )
+		result.append( 1, (char)in[i] );
+	return result;
+} */
+void Calculate( std::vector<int>& input, std::vector< Statement >& result ) throw(std::string)
+{
+	for( int i(0); i < statements.size(); i++ )
+	{
+		if( statements[i].left.size() == input.size() - 1 )
+			for( int l(0); l < input.size() - 1; l++ )
+				if( statements[i].left[l] != input[l] )
+					break;
+				else if( l == input.size() - 2 )
+					result.push_back( statements[i] );
+	}
+
+	for( int i(0); i < input.size(); i++ ) {
+		switch( input[i] )
+		{
+			case keyword::temp:
+				break;
+			case keyword::leftParens:
+				break;
+			case keyword::rightParens:
+				break;
+			case keyword::equal:
+				break;
+			case keyword::notEqual:
+				break;
+			case keyword::lessSign:
+				break;
+			case keyword::greaterSign:
+				break;
+			case keyword::leadsTo:
+				break;
+			case keyword::question:
+				break;
+			case keyword::not_a_keyword:
+				// Search to find what it is
+				i = i + input[ i + 1 ] + 1;
+				break;
+			default:
+				throw std::string( "Bug in interprenter, keyword: " 
+					      + keywords[ input[i] ] 
+					      + " doesn't exists" );
+				break;
+		}
+	}
 }
 
