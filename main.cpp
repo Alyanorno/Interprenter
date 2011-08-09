@@ -4,11 +4,13 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 9;
+const int num_keywords = 11;
 namespace keyword
 	{ enum { temp = 0,
 		 leftParens,
 		 rightParens,
+		 leftClammer,
+		 rightClammer,
 		 equal,
 		 notEqual,
 		 lessSign,
@@ -19,6 +21,8 @@ namespace keyword
 std::string keywords[ num_keywords ] = { "temp",
 				    "(",
 				    ")",
+				    "[",
+				    "]",
 				    "=",
 				    "!=",
 				    "<",
@@ -40,38 +44,15 @@ struct Statement
 	std::vector< int > left;
 	int connection;
 	std::vector< int > right;
-	operator std::string()
-	{
-		std::string result = "";
-		for( int i(0); i < left.size(); i++ )
-			if( left[i] == keyword::not_a_keyword ) {
-				for( int l(0); l < left[i+1]; l++ )
-					result.append( 1, (char)left[i+2+l] );
-				result.append( " " );
-				i += left[i+1] + 1;
-			} else {
-				result.append( keywords[ left[i] ] + " " );
-			}
-		if( connection != 0 )
-			result.append( keywords[ connection ] + " " );
-		for( int i(0); i < right.size(); i++ )
-			if( right[i] == keyword::not_a_keyword ) {
-				for( int l(0); l < right[i+1]; l++ )
-					result.append( 1, (char)right[i+2+l] );
-				result.append( " " );
-				i += right[i+1] + 1;
-			} else {
-				result.append( keywords[ right[i] ] + " " );
-			}
-		return result;
-	}
 };
+std::vector< int > pos_arguments;
 std::vector< Statement > statements;
 
 std::string Trim( std::string input );
+std::string ToString( std::vector<int>& in );
 void Parse( std::string input, std::vector<int>& result );
-void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std::string);
-void Calculate( std::vector<int>& input, std::vector< Statement >& result ) throw(std::string);
+void Run( std::vector<int>& input, std::vector< int >& result ) throw (std::string);
+void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std::string);
 int main()
 {
 	std::string input = "";
@@ -92,12 +73,12 @@ int main()
 		if( input.size() < 2 || input.compare( input.size() - 2, 2, "++" ) != 0 )
 		{
 			try {
-				std::vector<int> outParse;
-				std::vector< Statement > outRun;
+				std::vector< int > outParse;
+				std::vector< int > outRun;
 				Parse( input, outParse );
 				Run( outParse, outRun );
-				for( int i(0); i < outRun.size(); i++ )
-					std::cout << (std::string)outRun[i] << std::endl;
+				// Print result
+				std::cout << ToString( outRun ) << std::endl;
 			} catch( std::string error ) {
 				std::cout << "Error: " << error << std::endl;
 			}
@@ -126,6 +107,20 @@ std::string Trim( std::string input )
 			input.erase( i--, 1 );
 
 	return input;
+}
+
+std::string ToString( std::vector<int>& in )
+{
+	std::string result;
+	for( int i(0); i < in.size(); i++ )
+		if( in[i] == keyword::not_a_keyword ) {
+			for( int l(i+2); l < i+2 + in[i+1]; l++ )
+				result.append( 1, (char)in[l] );
+			i += 2 + in[i+1];
+		} else {
+			result.append( keywords[i] );
+		}
+	return result;
 }
 
 void Parse( std::string input, std::vector<int>& result )
@@ -163,7 +158,7 @@ void Parse( std::string input, std::vector<int>& result )
 	}
 }
 
-void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std::string)
+void Run( std::vector<int>& input, std::vector< int >& result ) throw (std::string)
 {
 	for( int i( 0 ); i < input.size(); i++ )
 		std::cout << input[i] << std::endl;
@@ -173,9 +168,9 @@ void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std
 	} else {
 		// Add a new statement
 		Statement statement;
-		int deapthParens = 0;
 		for( int i(0); i < input.size(); i++ )
 		{
+			int deapth = 0;
 			switch( input[ i ] )
 			{
 				case keyword::equal:
@@ -183,7 +178,7 @@ void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std
 				case keyword::lessSign:
 				case keyword::greaterSign:
 				case keyword::leadsTo:
-					if( deapthParens != 0 )
+					if( deapth )
 						break;
 					statement.connection = input[i];
 					for( int l(0); l < i; l++ )
@@ -196,48 +191,26 @@ void Run( std::vector<int>& input, std::vector< Statement >& result ) throw (std
 					i = i + input[ i + 1 ] + 1;
 					break;
 				case keyword::leftParens:
-					deapthParens++;
+				case keyword::leftClammer:
+					++deapth;
 					break;
 				case keyword::rightParens:
-					deapthParens--;
-					if( deapthParens < 0 )
-						throw std::string( "No matching parens" );
+				case keyword::rightClammer:
+					// Search for matching keyword
+					// If incompatible keyword found throw error
+					// If not found throw error
+					--deapth;
 					break;
 			}
 			if( i == input.size() - 1 )
 				throw std::string( "No connection in statement" );
 		}
 		statements.push_back( statement );
-		result.push_back( statement );
 	}
 }
-/*
-bool IsNumber( std::string& in )
-{
-	std::stringstream temp(in);
-	double t;
-	temp >> t;
-	return temp.good();
-}
-std::string ToString( std::vector<int>& in, int start, int size )
-{
-	std::string result;
-	for( int i(start); i < start + size; i++ )
-		result.append( 1, (char)in[i] );
-	return result;
-} */
-void Calculate( std::vector<int>& input, std::vector< Statement >& result ) throw(std::string)
-{
-	for( int i(0); i < statements.size(); i++ )
-	{
-		if( statements[i].left.size() == input.size() - 1 )
-			for( int l(0); l < input.size() - 1; l++ )
-				if( statements[i].left[l] != input[l] )
-					break;
-				else if( l == input.size() - 2 )
-					result.push_back( statements[i] );
-	}
 
+void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std::string)
+{
 	for( int i(0); i < input.size(); i++ ) {
 		switch( input[i] )
 		{
