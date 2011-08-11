@@ -1,0 +1,53 @@
+x = 1
+x = 2
+x = 3
+x = 4
+-- Same as
+x = [ 1 , 2 , 3 , 4 ]
+-- Same as
+x = [ c | c = 1 , c = c + 1 , c < 5 ]
+
+( 1 , 2 )
+=> 2
+( x )
+=> 4
+
+y = [ c | c = x , c /= ( x ) ]
+-- Same as (unless you change x)
+y = [ 1 , 2 , 3 ]
+
+hej = 'H
+hej = 'e
+hej = 'j
+-- Same as
+hej = [ 'H , 'e , 'j ]
+
+foo = x + 5
+( foo | x = 5 )
+=> 10
+( foo | x = nil )
+=> nil
+( foo | x = mu )
+=> x + 5
+( ( foo | x = mu ) | x = 5 )
+=> 10
+[ foo | x = x ]
+=> [ 6 , 7 , 8 , 9 ]
+
+foo = x - 2
+[ foo |  x = 5 ]
+=> [ 10 , 3 ]
+
+bizz = ( x + y + z | y = 5 )
+( bizz | x = 2 , z = -1 )
+ => 6
+
+boo = [ x + y + z | y = [ 5 , 2 ] ]
+[ boo | x = 2 , z = -1 ]
+ => [ 6 , 3 ]
+
+fizz = ( ( fizz | n = n - 2 ) + ( fizz | n = n - 1 ) | n = 0 => fizz = 0 , n = 1 => fizz = 1 )
+( fizz | n = 2 )
+=> 1
+[ fizz | n = [ 0 , 1 , 2 ] ]
+=> [ 0 , 1 , 1 ]
