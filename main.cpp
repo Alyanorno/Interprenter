@@ -4,7 +4,7 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 11;
+const int num_keywords = 10;
 namespace keyword
 	{ enum { temp = 0,
 		 leftParens,
@@ -16,19 +16,17 @@ namespace keyword
 		 lessSign,
 		 greaterSign,
 		 leadsTo,
-		 question,
 		 not_a_keyword = num_keywords }; }
 std::string keywords[ num_keywords ] = { "temp",
-				    "(",
-				    ")",
-				    "[",
-				    "]",
-				    "=",
-				    "!=",
-				    "<",
-				    ">",
-				    "->",
-				    "?" };
+				   	 "(",
+				   	 ")",
+				   	 "[",
+				   	 "]",
+				   	 "=",
+				   	 "!=",
+				   	 "<",
+				   	 ">",
+				   	 "->" };
 
 struct Statement
 {
@@ -41,18 +39,17 @@ struct Statement
 		for( int i(0); i < right.size(); i++ )
 			right.push_back( _right[i] );
 	}
-	std::vector< int > left;
+	std::vector< int > left, right;
 	int connection;
-	std::vector< int > right;
 };
 std::vector< int > pos_arguments;
 std::vector< Statement > statements;
 
 std::string Trim( std::string input );
 std::string ToString( std::vector<int>& in );
-void Parse( std::string input, std::vector<int>& result );
-void Run( std::vector<int>& input, std::vector< int >& result ) throw (std::string);
-void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std::string);
+std::vector<int> Parse( std::string input );
+std::vector<int> Run( std::vector<int>& input ) throw (std::string);
+std::vector<int> Calculate( std::vector<int>& input ) throw(std::string);
 int main()
 {
 	std::string input = "";
@@ -73,12 +70,7 @@ int main()
 		if( input.size() < 2 || input.compare( input.size() - 2, 2, "++" ) != 0 )
 		{
 			try {
-				std::vector< int > outParse;
-				std::vector< int > outRun;
-				Parse( input, outParse );
-				Run( outParse, outRun );
-				// Print result
-				std::cout << ToString( outRun ) << std::endl;
+				std::cout << ToString( Run( Parse( input ) ) );
 			} catch( std::string error ) {
 				std::cout << "Error: " << error << std::endl;
 			}
@@ -120,10 +112,12 @@ std::string ToString( std::vector<int>& in )
 		} else {
 			result.append( keywords[i] );
 		}
+	if( in.size() != 0 )
+		result.append( 1, '\n' );
 	return result;
 }
 
-void Parse( std::string input, std::vector<int>& result )
+std::vector<int> Parse( std::string input )
 {
 	std::vector< std::string > words;
 	for( int i(0); i < input.size(); i++ )
@@ -136,6 +130,7 @@ void Parse( std::string input, std::vector<int>& result )
 		else if( i == input.size() - 1 )
 			words.push_back( input.substr( 0, i + 1 ) );
 	
+	std::vector< int > result;
 	for( int i(0); i < words.size(); i++ )
 	{
 		bool found = false;
@@ -156,61 +151,93 @@ void Parse( std::string input, std::vector<int>& result )
 				result.push_back( (int)words[i][k] );
 		}
 	}
+	return result;
 }
 
-void Run( std::vector<int>& input, std::vector< int >& result ) throw (std::string)
+std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 {
-	for( int i( 0 ); i < input.size(); i++ )
-		std::cout << input[i] << std::endl;
-	if( input[ input.size() - 1 ] == keyword::question ) {
-		// Answer the question
-		Calculate( input, result );
-	} else {
-		// Add a new statement
-		Statement statement;
-		for( int i(0); i < input.size(); i++ )
+	// If its a statement add new statement
+	// else calculate the answer
+	bool IsStatement = false;
+	std::vector<int> empty;
+	Statement statement;
+	for( int i(0); i < input.size(); i++ )
+	{
+		int deapth = 0;
+		switch( input[ i ] )
 		{
-			int deapth = 0;
-			switch( input[ i ] )
-			{
-				case keyword::equal:
-				case keyword::notEqual:
-				case keyword::lessSign:
-				case keyword::greaterSign:
-				case keyword::leadsTo:
-					if( deapth )
+			case keyword::equal:
+			case keyword::notEqual:
+			case keyword::lessSign:
+			case keyword::greaterSign:
+			case keyword::leadsTo:
+				if( deapth )
+					break;
+				// Its a statement construct and add new statement
+				IsStatement = true;
+				statement.connection = input[i];
+				for( int l(0); l < i; l++ )
+					statement.left.push_back( input[ l ] );
+				for( int l(i+1); l < input.size(); l++ )
+					statement.right.push_back( input[ l ] );
+				i = input.size();
+				statements.push_back( statement );
+	
+				return empty;
+			case keyword::not_a_keyword:
+				i = i + input[ i + 1 ] + 1;
+				break;
+			case keyword::leftParens:
+			case keyword::leftClammer:
+				++deapth;
+				break;
+			case keyword::rightParens:
+				// Search for matching keyword
+				for( int l(i); l > 0; --l )
+				{
+					if( input[ l ] == keyword::leftParens ) {
+						// Found matching parens
 						break;
-					statement.connection = input[i];
-					for( int l(0); l < i; l++ )
-						statement.left.push_back( input[ l ] );
-					for( int l(i+1); l < input.size(); l++ )
-						statement.right.push_back( input[ l ] );
-					i = input.size();
-					break;
-				case keyword::not_a_keyword:
-					i = i + input[ i + 1 ] + 1;
-					break;
-				case keyword::leftParens:
-				case keyword::leftClammer:
-					++deapth;
-					break;
-				case keyword::rightParens:
-				case keyword::rightClammer:
-					// Search for matching keyword
-					// If incompatible keyword found throw error
-					// If not found throw error
-					--deapth;
-					break;
-			}
-			if( i == input.size() - 1 )
-				throw std::string( "No connection in statement" );
+					} else if( input[ l ] == keyword::leftClammer ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
+					} else if ( l == 0 ) {
+						// If not found throw error
+						throw std::string( "No matching bracket" );
+					}
+				}
+				--deapth;
+				break;
+			case keyword::rightClammer:
+				// Search for matching keyword
+				for( int l(i); l > 0; --l )
+				{
+					if( input[ l ] == keyword::leftClammer ) {
+						// Found matching clammer
+						break;
+					} else if( input[ l ] == keyword::leftParens ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
+					} else if ( l == 0 ) {
+						// If not found throw error
+						throw std::string( "No matching bracket" );
+					}
+				}
+				--deapth;
+				break;
 		}
-		statements.push_back( statement );
+		if( i == input.size() - 1 )
+			throw std::string( "No connection in statement" );
+	}
+	if( !IsStatement ) {
+		// Answer the question
+		return Calculate( input );
 	}
 }
 
-void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std::string)
+std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
+	std::vector<int> result;
 	for( int i(0); i < input.size(); i++ ) {
 		switch( input[i] )
 		{
@@ -218,7 +245,39 @@ void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std:
 				break;
 			case keyword::leftParens:
 				break;
+			case keyword::leftClammer:
+				break;
 			case keyword::rightParens:
+				// Search for matching keyword
+				for( int l(i); l > 0; --l )
+				{
+					if( input[ l ] == keyword::leftParens ) {
+						// Calculate results
+						// Insert them into the vector
+					} else if( input[ l ] == keyword::leftClammer ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
+					} else if ( l == 0 ) {
+						// If not found throw error
+						throw std::string( "No matching bracket" );
+					}
+				}
+				break;
+			case keyword::rightClammer:
+				// Search for matching keyword
+				for( int l(i); l > 0; --l )
+				{
+					if( input[ l ] == keyword::leftClammer ) {
+						// Calculate results
+						// Insert them into the vector
+					} else if( input[ l ] == keyword::leftParens ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
+					} else if ( l == 0 ) {
+						// If not found throw error
+						throw std::string( "No matching bracket" );
+					}
+				}
 				break;
 			case keyword::equal:
 				break;
@@ -229,8 +288,6 @@ void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std:
 			case keyword::greaterSign:
 				break;
 			case keyword::leadsTo:
-				break;
-			case keyword::question:
 				break;
 			case keyword::not_a_keyword:
 				// Search to find what it is
@@ -243,5 +300,6 @@ void Calculate( std::vector<int>& input, std::vector< int >& result ) throw(std:
 				break;
 		}
 	}
+	return result;
 }
 
