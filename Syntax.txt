@@ -16,11 +16,21 @@ y = [ c | c = x , c /= ( x ) ]
 -- Same as (unless you change x)
 y = [ 1 , 2 , 3 ]
 
-hej = 'H
-hej = 'e
-hej = 'j
+hej = H
+hej = e
+hej = j
 -- Same as
-hej = [ 'H , 'e , 'j ]
+hej = [ H , e , j ]
+
+hej = Text
+io = hej
+=> Hej
+
+in = Text
+in = io
+( in )
+<= Hello computer
+=> Hello computer
 
 foo = x + 5
 ( foo | x = 5 )
@@ -46,7 +56,7 @@ boo = [ x + y + z | y = [ 5 , 2 ] ]
 [ boo | x = 2 , z = -1 ]
  => [ 6 , 3 ]
 
-fizz = ( ( fizz | n = n - 2 ) + ( fizz | n = n - 1 ) | n = 0 => fizz = 0 , n = 1 => fizz = 1 )
+fizz = ( ( fizz | n = ( calculate = n ) - 2 ) + ( fizz | n = ( calculate = n ) - 1 ) | ( n = 0 ) => fizz = 0 , ( n = 1 ) => fizz = 1 )
 ( fizz | n = 2 )
 => 1
 [ fizz | n = [ 0 , 1 , 2 ] ]

@@ -27,6 +27,17 @@ std::string keywords[ num_keywords ] = { "temp",
 				   	 "<",
 				   	 ">",
 				   	 "->" };
+static int presedens[ num_keywords ] = { 10,
+						     9,
+						     8,
+						     7,
+						     6,
+						     5,
+						     4,
+						     3,
+						     2,
+						     1
+							};
 
 struct Statement
 {
@@ -164,67 +175,73 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 	for( int i(0); i < input.size(); i++ )
 	{
 		int deapth = 0;
-		switch( input[ i ] )
-		{
-			case keyword::equal:
-			case keyword::notEqual:
-			case keyword::lessSign:
-			case keyword::greaterSign:
-			case keyword::leadsTo:
-				if( deapth )
+		if( deapth > 0 ) {
+			switch( input[ i ] )
+			{
+				case keyword::leftParens:
+				case keyword::leftClammer:
+					++deapth;
 					break;
-				// Its a statement construct and add new statement
-				IsStatement = true;
-				statement.connection = input[i];
-				for( int l(0); l < i; l++ )
-					statement.left.push_back( input[ l ] );
-				for( int l(i+1); l < input.size(); l++ )
-					statement.right.push_back( input[ l ] );
-				i = input.size();
-				statements.push_back( statement );
-	
-				return empty;
-			case keyword::not_a_keyword:
-				i = i + input[ i + 1 ] + 1;
-				break;
-			case keyword::leftParens:
-			case keyword::leftClammer:
-				++deapth;
-				break;
-			case keyword::rightParens:
-				// Search for matching keyword
-				for( int l(i); l > 0; --l )
-				{
-					if( input[ l ] == keyword::leftParens ) {
-						// Found matching parens
-						break;
-					} else if( input[ l ] == keyword::leftClammer ) {
-						// If incompatible keyword found throw error
-						throw std::string( "Incorrect matching bracket" );
-					} else if ( l == 0 ) {
-						// If not found throw error
-						throw std::string( "No matching bracket" );
+				case keyword::rightParens:
+				case keyword::rightClammer:
+					--deapth;
+					for( int l(i); l > 0; --l )
+					{
+						if( input[ l ] == input[i] ) {
+							// Found matching clammer
+							break;
+						} else if( input[ l ]
+							== ( input[i] 
+								== keyword::leftParens 
+									? keyword::leftClammer 
+									: keyword::leftParens ) ) {
+							// If incompatible keyword found throw error
+							throw std::string( "Incorrect matching bracket" );
+						} else if ( l == 0 ) {
+							// If not found throw error
+							throw std::string( "No matching bracket" );
+						}
 					}
-				}
-				--deapth;
-				break;
-			case keyword::rightClammer:
-				// Search for matching keyword
-				for( int l(i); l > 0; --l )
-				{
-					if( input[ l ] == keyword::leftClammer ) {
-						// Found matching clammer
-						break;
-					} else if( input[ l ] == keyword::leftParens ) {
-						// If incompatible keyword found throw error
-						throw std::string( "Incorrect matching bracket" );
-					} else if ( l == 0 ) {
-						// If not found throw error
-						throw std::string( "No matching bracket" );
-					}
-				}
-				--deapth;
-				break;
+					break;
+				case keyword::not_a_keyword:
+					i = i + input[ i + 1 ] + 1;
+					break;
+				default:
+					break;
+;
+			}
+		} else {
+			switch( input[ i ] )
+			{
+				case keyword::equal:
+				case keyword::notEqual:
+				case keyword::lessSign:
+				case keyword::greaterSign:
+				case keyword::leadsTo:
+					// Its a statement construct and add new statement
+					IsStatement = true;
+					statement.connection = input[i];
+					for( int l(0); l < i; l++ )
+						statement.left.push_back( input[ l ] );
+					for( int l(i+1); l < input.size(); l++ )
+						statement.right.push_back( input[ l ] );
+					i = input.size();
+					statements.push_back( statement );
+		
+					return empty;
+				case keyword::leftParens:
+				case keyword::leftClammer:
+					++deapth;
+					break;
+				case keyword::rightParens:
+				case keyword::rightClammer:
+					throw std::string( "No matching bracket" );
+				case keyword::not_a_keyword:
+					i = i + input[ i + 1 ] + 1;
+					break;
+				default:
+					break;
+			}
 		}
 		if( i == input.size() - 1 )
 			throw std::string( "No connection in statement" );
@@ -233,71 +250,89 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 		// Answer the question
 		return Calculate( input );
 	}
+	throw std::string( "Bug in interprenter, supposedly unreachable code... reached" );
 }
 
 std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
-	std::vector<int> result;
-	for( int i(0); i < input.size(); i++ ) {
-		switch( input[i] )
-		{
-			case keyword::temp:
-				break;
-			case keyword::leftParens:
-				break;
-			case keyword::leftClammer:
-				break;
-			case keyword::rightParens:
-				// Search for matching keyword
-				for( int l(i); l > 0; --l )
-				{
-					if( input[ l ] == keyword::leftParens ) {
-						// Calculate results
-						// Insert them into the vector
-					} else if( input[ l ] == keyword::leftClammer ) {
-						// If incompatible keyword found throw error
-						throw std::string( "Incorrect matching bracket" );
-					} else if ( l == 0 ) {
-						// If not found throw error
-						throw std::string( "No matching bracket" );
+	std::vector<int> result, stack;
+	for( int i(0); i < input.size(); i++ )
+	{
+		int deapth = 0;
+		if( deapth > 0 ) {
+			switch( input[i] )
+			{
+				case keyword::leftParens:
+				case keyword::leftClammer:
+					++deapth;
+					break;
+				case keyword::rightParens:
+				case keyword::rightClammer:
+					// Search for matching keyword
+					for( int l(i); l > 0; --l )
+					{
+						if( input[ l ] == input[i] ) {
+							// Calculate results
+							// Insert them into the vector
+							std::vector<int> subPart;
+							for( int k(l); k < i+1; k++ )
+								subPart.push_back( input[k] );
+							result.erase( input.begin() + l, input.begin() + i + 1 );
+							subPart = Calculate( subPart );
+							result.insert( result.begin() + l, subPart.begin(), subPart.end() );
+							break;
+						} else if( input[ l ]
+							== ( input[i] 
+								== keyword::leftParens 
+									? keyword::leftClammer 
+									: keyword::leftParens ) ) {
+							// If incompatible keyword found throw error
+							throw std::string( "Incorrect matching bracket" );
+						} else if ( l == 0 ) {
+							// If not found throw error
+							throw std::string( "No matching bracket" );
+						}
 					}
-				}
-				break;
-			case keyword::rightClammer:
-				// Search for matching keyword
-				for( int l(i); l > 0; --l )
-				{
-					if( input[ l ] == keyword::leftClammer ) {
-						// Calculate results
-						// Insert them into the vector
-					} else if( input[ l ] == keyword::leftParens ) {
-						// If incompatible keyword found throw error
-						throw std::string( "Incorrect matching bracket" );
-					} else if ( l == 0 ) {
-						// If not found throw error
-						throw std::string( "No matching bracket" );
-					}
-				}
-				break;
-			case keyword::equal:
-				break;
-			case keyword::notEqual:
-				break;
-			case keyword::lessSign:
-				break;
-			case keyword::greaterSign:
-				break;
-			case keyword::leadsTo:
-				break;
-			case keyword::not_a_keyword:
-				// Search to find what it is
-				i = i + input[ i + 1 ] + 1;
-				break;
-			default:
-				throw std::string( "Bug in interprenter, keyword: " 
-					      + keywords[ input[i] ] 
-					      + " doesn't exists" );
-				break;
+					--deapth;
+					break;
+				case keyword::not_a_keyword:
+					i = i + input[ i + 1 ] + 1;
+					break;
+				default:
+					break;
+			}
+		} else {
+			switch( input[i] )
+			{
+				case keyword::temp:
+					break;
+				case keyword::leftParens:
+				case keyword::leftClammer:
+					++deapth;
+					break;
+				case keyword::rightParens:
+				case keyword::rightClammer:
+					throw std::string( "No matching bracket" );
+					break;
+				case keyword::equal:
+					break;
+				case keyword::notEqual:
+					break;
+				case keyword::lessSign:
+					break;
+				case keyword::greaterSign:
+					break;
+				case keyword::leadsTo:
+					break;
+				case keyword::not_a_keyword:
+					// Search to find what it is
+					i = i + input[ i + 1 ] + 1;
+					break;
+				default:
+					throw std::string( "Bug in interprenter, keyword: " 
+						      + keywords[ input[i] ] 
+						      + " doesn't exists" );
+			}
 		}
 	}
 	return result;
