@@ -4,40 +4,59 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 10;
-namespace keyword
-	{ enum { temp = 0,
-		 leftParens,
-		 rightParens,
-		 leftClammer,
-		 rightClammer,
-		 equal,
-		 notEqual,
-		 lessSign,
-		 greaterSign,
-		 leadsTo,
-		 not_a_keyword = num_keywords }; }
-std::string keywords[ num_keywords ] = { "temp",
+const int num_keywords = 11;
+namespace keyword { 		  enum {
+					 temp = 0,
+					 leftParens,
+					 rightParens,
+					 leftClammer,
+					 rightClammer,
+					 equal,
+					 notEqual,
+					 superEqual,
+					 lessSign,
+					 greaterSign,
+					 leadsTo,
+					 plus,
+					 minus,
+					 multiply,
+					 divide,
+					 not_a_keyword = num_keywords,
+				       }; }
+std::string keywords[ num_keywords ] = {
+					 "temp",
 				   	 "(",
 				   	 ")",
 				   	 "[",
 				   	 "]",
 				   	 "=",
 				   	 "!=",
+					 "==",
 				   	 "<",
 				   	 ">",
-				   	 "->" };
-static int presedens[ num_keywords ] = { 10,
-						     9,
-						     8,
-						     7,
-						     6,
-						     5,
-						     4,
-						     3,
-						     2,
-						     1
-							};
+				   	 "->",
+					 "+",
+					 "-",
+					 "*",
+					 "/",
+				       };
+static int presedens[ num_keywords ] = {
+					 15,
+					 14,
+					 13,
+					 12,
+					 11,
+					 10,
+					 9,
+					 8,
+					 7,
+					 6,
+					 5,
+					 4,
+					 3,
+					 2,
+					 1,
+				       };
 
 struct Statement
 {
@@ -225,9 +244,23 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 						statement.left.push_back( input[ l ] );
 					for( int l(i+1); l < input.size(); l++ )
 						statement.right.push_back( input[ l ] );
-					i = input.size();
+
 					statements.push_back( statement );
-		
+					return empty;
+				case keyword::superEqual:
+					// Its a statement construct, calculate right side and add new statement
+					IsStatement = true;
+					statement.connection = input[i];
+					for( int l(0); l < i; l++ )
+						statement.left.push_back( input[ l ] );
+
+					// Uses empty to temporarly store values
+					for( int l(i+1); l < input.size(); l++ )
+						empty.push_back( input[ l ] );
+					statement.right = Calculate( empty );
+					empty.clear();
+
+					statements.push_back( statement );
 					return empty;
 				case keyword::leftParens:
 				case keyword::leftClammer:
@@ -243,8 +276,6 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 					break;
 			}
 		}
-		if( i == input.size() - 1 )
-			throw std::string( "No connection in statement" );
 	}
 	if( !IsStatement ) {
 		// Answer the question
@@ -255,12 +286,14 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 
 std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
-	std::vector<int> result, stack;
-	for( int i(0); i < input.size(); i++ )
+	// TO DO: assert that the last and the first is a bracket and of the same type
+	std::vector<int> result = input;
+	for( int i(1); i < result.size() - 1; i++ )
 	{
+		// TO DO: check for presedens
 		int deapth = 0;
 		if( deapth > 0 ) {
-			switch( input[i] )
+			switch( result[i] )
 			{
 				case keyword::leftParens:
 				case keyword::leftClammer:
@@ -268,21 +301,21 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					break;
 				case keyword::rightParens:
 				case keyword::rightClammer:
-					// Search for matching keyword
-					for( int l(i); l > 0; --l )
+					// Search for matching bracket 
+					for( int l(i-1); l > 0; l-- )
 					{
-						if( input[ l ] == input[i] ) {
+						if( result[ l ] == result[i] ) {
 							// Calculate results
 							// Insert them into the vector
 							std::vector<int> subPart;
 							for( int k(l); k < i+1; k++ )
-								subPart.push_back( input[k] );
-							result.erase( input.begin() + l, input.begin() + i + 1 );
+								subPart.push_back( result[k] );
+							result.erase( result.begin() + l, result.begin() + i + 1 );
 							subPart = Calculate( subPart );
 							result.insert( result.begin() + l, subPart.begin(), subPart.end() );
 							break;
-						} else if( input[ l ]
-							== ( input[i] 
+						} else if( result[ l ]
+							== ( result[i] 
 								== keyword::leftParens 
 									? keyword::leftClammer 
 									: keyword::leftParens ) ) {
@@ -296,13 +329,13 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					--deapth;
 					break;
 				case keyword::not_a_keyword:
-					i = i + input[ i + 1 ] + 1;
+					i = i + result[ i + 1 ] + 1;
 					break;
 				default:
 					break;
 			}
 		} else {
-			switch( input[i] )
+			switch( result[i] )
 			{
 				case keyword::temp:
 					break;
@@ -315,22 +348,26 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					throw std::string( "No matching bracket" );
 					break;
 				case keyword::equal:
-					break;
 				case keyword::notEqual:
-					break;
+				case keyword::superEqual:
 				case keyword::lessSign:
-					break;
 				case keyword::greaterSign:
-					break;
 				case keyword::leadsTo:
+					// TO DO: Cast error
+					break;
+				case keyword::plus:
+				case keyword::minus:
+				case keyword::multiply:
+				case keyword::divide:
+					// TO DO: Add operator calculations
 					break;
 				case keyword::not_a_keyword:
-					// Search to find what it is
-					i = i + input[ i + 1 ] + 1;
+					// TO DO: Search to find what it is
+					i = i + result[ i + 1 ] + 1;
 					break;
 				default:
 					throw std::string( "Bug in interprenter, keyword: " 
-						      + keywords[ input[i] ] 
+						      + keywords[ result[i] ] 
 						      + " doesn't exists" );
 			}
 		}
