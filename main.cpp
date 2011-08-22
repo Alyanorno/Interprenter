@@ -4,58 +4,70 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 11;
-namespace keyword { 		  enum {
-					 temp = 0,
-					 leftParens,
-					 rightParens,
-					 leftClammer,
-					 rightClammer,
-					 equal,
-					 notEqual,
-					 superEqual,
-					 lessSign,
-					 greaterSign,
-					 leadsTo,
-					 plus,
-					 minus,
-					 multiply,
-					 divide,
-					 not_a_keyword = num_keywords,
+const int num_keywords = 19;
+namespace keyword { enum {
+					temp = 0,
+					leftParens,
+					rightParens,
+					leftClammer,
+					rightClammer,
+					equal,
+					notEqual,
+					superEqual,
+					lessSign,
+					greaterSign,
+					leadsTo,
+					plus,
+					minus,
+					multiply,
+					divide,
+					where,
+					io,
+					text,
+					number,
+					not_a_keyword = num_keywords,
 				       }; }
-std::string keywords[ num_keywords ] = {
-					 "temp",
-				   	 "(",
-				   	 ")",
-				   	 "[",
-				   	 "]",
-				   	 "=",
-				   	 "!=",
-					 "==",
-				   	 "<",
-				   	 ">",
-				   	 "->",
-					 "+",
-					 "-",
-					 "*",
-					 "/",
+static std::string keywords[ num_keywords ] = {
+					"temp",
+				   	"(",
+				   	")",
+				   	"[",
+				   	"]",
+				   	"=",
+				   	"!=",
+					"==",
+				   	"<",
+				   	">",
+				   	"->",
+					"+",
+					"-",
+					"*",
+					"/",
+					"|",
+					"io",
+					"Text",
+					"Number",
 				       };
 static int presedens[ num_keywords ] = {
-					 15,
-					 14,
-					 13,
-					 12,
-					 11,
-					 10,
-					 9,
-					 8,
-					 7,
-					 6,
-					 5,
-					 4,
-					 3,
-					 2,
-					 1,
+					19,
+					18,
+					17,
+					16,
+					15,
+					14,
+					13,
+					12,
+					11,
+					10,
+					9,
+					8,
+					7,
+					6,
+					5,
+					4,
+					3,
+					2,
+					1,
 				       };
 
 struct Statement
@@ -79,7 +91,8 @@ std::string Trim( std::string input );
 std::string ToString( std::vector<int>& in );
 std::vector<int> Parse( std::string input );
 std::vector<int> Run( std::vector<int>& input ) throw (std::string);
-std::vector<int> Calculate( std::vector<int>& input ) throw(std::string);
+std::vector<int> Calculate( std::vector<int>& input ) throw (std::string);
+bool AddStatement( std::vector<int>& input ) throw (std::string);
 int main()
 {
 	std::string input = "";
@@ -104,6 +117,7 @@ int main()
 			} catch( std::string error ) {
 				std::cout << "Error: " << error << std::endl;
 			}
+			// TO DO: remove the arguments
 			input.clear();
 		}
 		else
@@ -188,8 +202,17 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 {
 	// If its a statement add new statement
 	// else calculate the answer
-	bool IsStatement = false;
+	if( !AddStatement( input ) ) {
+		// Answer the question
+		return Calculate( input );
+	}
 	std::vector<int> empty;
+	return empty;
+}
+
+bool AddStatement( std::vector<int>& input ) throw (std::string)
+{
+	std::vector<int> temp;
 	Statement statement;
 	for( int i(0); i < input.size(); i++ )
 	{
@@ -237,31 +260,28 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 				case keyword::lessSign:
 				case keyword::greaterSign:
 				case keyword::leadsTo:
-					// Its a statement construct and add new statement
-					IsStatement = true;
-					statement.connection = input[i];
-					for( int l(0); l < i; l++ )
-						statement.left.push_back( input[ l ] );
-					for( int l(i+1); l < input.size(); l++ )
-						statement.right.push_back( input[ l ] );
-
-					statements.push_back( statement );
-					return empty;
 				case keyword::superEqual:
-					// Its a statement construct, calculate right side and add new statement
-					IsStatement = true;
+					// Its a statement construct and add new statement
 					statement.connection = input[i];
 					for( int l(0); l < i; l++ )
 						statement.left.push_back( input[ l ] );
 
-					// Uses empty to temporarly store values
-					for( int l(i+1); l < input.size(); l++ )
-						empty.push_back( input[ l ] );
-					statement.right = Calculate( empty );
-					empty.clear();
+					// TO DO: add the special case when statement.left = io
 
-					statements.push_back( statement );
-					return empty;
+					if( input[ i ] == keyword::superEqual ) {
+						// Uses temp to temporarly store values
+						for( int l(i+1); l < input.size(); l++ )
+							temp.push_back( input[ l ] );
+						statement.right = Calculate( temp );
+						temp.clear();
+						statements.push_back( statement );
+						return true;
+					} else {
+						for( int l(i+1); l < input.size(); l++ )
+							statement.right.push_back( input[ l ] );
+						statements.push_back( statement );
+						return true;
+					}
 				case keyword::leftParens:
 				case keyword::leftClammer:
 					++deapth;
@@ -277,16 +297,13 @@ std::vector<int> Run( std::vector<int>& input ) throw (std::string)
 			}
 		}
 	}
-	if( !IsStatement ) {
-		// Answer the question
-		return Calculate( input );
-	}
-	throw std::string( "Bug in interprenter, supposedly unreachable code... reached" );
+	return false;
 }
 
 std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
 	// TO DO: assert that the last and the first is a bracket and of the same type
+	// TO DO: check for | if found add all the statements found on the right side
 	std::vector<int> result = input;
 	for( int i(1); i < result.size() - 1; i++ )
 	{
@@ -338,6 +355,7 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 			switch( result[i] )
 			{
 				case keyword::temp:
+					// Used during the construction of the interprenter
 					break;
 				case keyword::leftParens:
 				case keyword::leftClammer:
@@ -353,6 +371,7 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 				case keyword::lessSign:
 				case keyword::greaterSign:
 				case keyword::leadsTo:
+				case keyword::io:
 					// TO DO: Cast error
 					break;
 				case keyword::plus:
@@ -362,7 +381,7 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					// TO DO: Add operator calculations
 					break;
 				case keyword::not_a_keyword:
-					// TO DO: Search to find what it is
+					// TO DO: Search to find what it is and replace with what it is
 					i = i + result[ i + 1 ] + 1;
 					break;
 				default:
@@ -372,6 +391,7 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 			}
 		}
 	}
+	// TO DO: Change the result depending on the type of the brackets
 	return result;
 }
 
