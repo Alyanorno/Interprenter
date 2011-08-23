@@ -4,7 +4,7 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 19;
+const int num_keywords = 20;
 namespace keyword { enum {
 					temp = 0,
 					leftParens,
@@ -22,6 +22,7 @@ namespace keyword { enum {
 					multiply,
 					divide,
 					where,
+					comma,
 					io,
 					text,
 					number,
@@ -44,11 +45,13 @@ static std::string keywords[ num_keywords ] = {
 					"*",
 					"/",
 					"|",
+					",",
 					"io",
 					"Text",
 					"Number",
 				       };
 static int presedens[ num_keywords ] = {
+					20,
 					19,
 					18,
 					17,
@@ -216,41 +219,36 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 	Statement statement;
 	for( int i(0); i < input.size(); i++ )
 	{
-		int deapth = 0;
-		if( deapth > 0 ) {
+		std::vector<int> bracketPos;
+		if( bracketPos.size() > 0 ) {
+			int pos = bracketPos[ bracketPos.size() - 1 ];
+			int matchingBracket = input[ pos ];
 			switch( input[ i ] )
 			{
 				case keyword::leftParens:
 				case keyword::leftClammer:
-					++deapth;
+					bracketPos.push_back( i );
 					break;
-				case keyword::rightParens:
+				case keyword::rightParens: 
 				case keyword::rightClammer:
-					--deapth;
-					for( int l(i); l > 0; --l )
-					{
-						if( input[ l ] == input[i] ) {
-							// Found matching clammer
-							break;
-						} else if( input[ l ]
-							== ( input[i] 
-								== keyword::leftParens 
-									? keyword::leftClammer 
-									: keyword::leftParens ) ) {
-							// If incompatible keyword found throw error
-							throw std::string( "Incorrect matching bracket" );
-						} else if ( l == 0 ) {
-							// If not found throw error
-							throw std::string( "No matching bracket" );
-						}
+					if( matchingBracket == input[i] + 1 ) {
+						// Matching clammer
+						break;
+					} else if( matchingBracket
+						== ( input[i] + 1
+							== keyword::rightParens 
+								? keyword::rightClammer 
+								: keyword::rightParens ) ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
 					}
+					bracketPos.pop_back();
 					break;
 				case keyword::not_a_keyword:
 					i = i + input[ i + 1 ] + 1;
 					break;
 				default:
 					break;
-;
 			}
 		} else {
 			switch( input[ i ] )
@@ -266,29 +264,32 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 					for( int l(0); l < i; l++ )
 						statement.left.push_back( input[ l ] );
 
-					// TO DO: add the special case when statement.left = io
-
 					if( input[ i ] == keyword::superEqual ) {
 						// Uses temp to temporarly store values
 						for( int l(i+1); l < input.size(); l++ )
 							temp.push_back( input[ l ] );
 						statement.right = Calculate( temp );
 						temp.clear();
-						statements.push_back( statement );
-						return true;
 					} else {
 						for( int l(i+1); l < input.size(); l++ )
 							statement.right.push_back( input[ l ] );
-						statements.push_back( statement );
-						return true;
 					}
+	
+					// Special case when statement.left = io
+					if( statement.left[0] == keyword::io ) {
+						std::cout << std::endl << ToString( statement.right ) << std::endl;
+					}
+					statements.push_back( statement );
+					return true;
 				case keyword::leftParens:
 				case keyword::leftClammer:
-					++deapth;
+					bracketPos.push_back( i );
 					break;
 				case keyword::rightParens:
 				case keyword::rightClammer:
 					throw std::string( "No matching bracket" );
+				case keyword::comma:
+					throw std::string( "Ilegal keyword placement" );
 				case keyword::not_a_keyword:
 					i = i + input[ i + 1 ] + 1;
 					break;
@@ -302,48 +303,55 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 
 std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
-	// TO DO: assert that the last and the first is a bracket and of the same type
+	// Check that the last and the first is a bracket and of the same type
+	if( input[0] == keyword::leftParens ) {
+		if( input[ input.size()-1 ] != keyword::rightParens ) {
+			throw std::string( "Calculations must be enclosed in brackets of the same type" );
+		}
+	} else if( input[0] == keyword::leftClammer ) {
+		if( input[ input.size()-1 ] != keyword::rightClammer ) {
+			throw std::string( "Calculations must be enclosed in brackets of the same type" );
+		}
+	} else {
+		throw std::string( "Calculations must be enclosed in brackets" );
+	}
+
 	// TO DO: check for | if found add all the statements found on the right side
+
 	std::vector<int> result = input;
 	for( int i(1); i < result.size() - 1; i++ )
 	{
-		// TO DO: check for presedens
-		int deapth = 0;
-		if( deapth > 0 ) {
+		std::vector<int> bracketPos;
+		if( bracketPos.size() > 0 ) {
+			int pos = bracketPos[ bracketPos.size() - 1 ];
+			int matchingBracket = result[ pos ];
 			switch( result[i] )
 			{
 				case keyword::leftParens:
 				case keyword::leftClammer:
-					++deapth;
+					bracketPos.push_back( i );
 					break;
 				case keyword::rightParens:
 				case keyword::rightClammer:
-					// Search for matching bracket 
-					for( int l(i-1); l > 0; l-- )
-					{
-						if( result[ l ] == result[i] ) {
-							// Calculate results
-							// Insert them into the vector
-							std::vector<int> subPart;
-							for( int k(l); k < i+1; k++ )
-								subPart.push_back( result[k] );
-							result.erase( result.begin() + l, result.begin() + i + 1 );
-							subPart = Calculate( subPart );
-							result.insert( result.begin() + l, subPart.begin(), subPart.end() );
-							break;
-						} else if( result[ l ]
-							== ( result[i] 
-								== keyword::leftParens 
-									? keyword::leftClammer 
-									: keyword::leftParens ) ) {
-							// If incompatible keyword found throw error
-							throw std::string( "Incorrect matching bracket" );
-						} else if ( l == 0 ) {
-							// If not found throw error
-							throw std::string( "No matching bracket" );
-						}
+					if( matchingBracket == result[i] + 1 ) {
+						// Calculate results
+						// Insert them into the vector
+						std::vector<int> subPart;
+						for( int k(pos); k < i+1; k++ )
+							subPart.push_back( result[k] );
+						result.erase( result.begin() + pos, result.begin() + i + 1 );
+						subPart = Calculate( subPart );
+						result.insert( result.begin() + pos, subPart.begin(), subPart.end() );
+						break;
+					} else if( matchingBracket
+						== ( result[i] + 1
+							== keyword::rightParens 
+								? keyword::rightClammer 
+								: keyword::rightParens ) ) {
+						// If incompatible keyword found throw error
+						throw std::string( "Incorrect matching bracket" );
 					}
-					--deapth;
+					bracketPos.pop_back();
 					break;
 				case keyword::not_a_keyword:
 					i = i + result[ i + 1 ] + 1;
@@ -352,6 +360,7 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					break;
 			}
 		} else {
+			// TO DO: check for presedens
 			switch( result[i] )
 			{
 				case keyword::temp:
@@ -359,12 +368,11 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					break;
 				case keyword::leftParens:
 				case keyword::leftClammer:
-					++deapth;
+					bracketPos.push_back( i );
 					break;
 				case keyword::rightParens:
 				case keyword::rightClammer:
 					throw std::string( "No matching bracket" );
-					break;
 				case keyword::equal:
 				case keyword::notEqual:
 				case keyword::superEqual:
@@ -372,13 +380,16 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 				case keyword::greaterSign:
 				case keyword::leadsTo:
 				case keyword::io:
-					// TO DO: Cast error
-					break;
+				case keyword::text:
+				case keyword::number:
+					throw std::string( "Ilegal keyword placement" );
 				case keyword::plus:
 				case keyword::minus:
 				case keyword::multiply:
 				case keyword::divide:
 					// TO DO: Add operator calculations
+					break;
+				case keyword::comma:
 					break;
 				case keyword::not_a_keyword:
 					// TO DO: Search to find what it is and replace with what it is
