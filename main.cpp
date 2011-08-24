@@ -4,7 +4,7 @@
 #include <vector>
 #include <stack>
 
-const int num_keywords = 20;
+const int num_keywords = 24;
 namespace keyword { enum {
 					temp = 0,
 					leftParens,
@@ -14,8 +14,10 @@ namespace keyword { enum {
 					equal,
 					notEqual,
 					superEqual,
-					lessSign,
-					greaterSign,
+					less,
+					notLess,
+					greater,
+					notGreater,
 					leadsTo,
 					plus,
 					minus,
@@ -26,6 +28,8 @@ namespace keyword { enum {
 					io,
 					text,
 					number,
+					nil,
+					mu,
 					not_a_keyword = num_keywords,
 				       }; }
 static std::string keywords[ num_keywords ] = {
@@ -38,8 +42,10 @@ static std::string keywords[ num_keywords ] = {
 				   	"!=",
 					"==",
 				   	"<",
+				   	"!<",
 				   	">",
-				   	"->",
+				   	"!>",
+				   	"=>",
 					"+",
 					"-",
 					"*",
@@ -49,8 +55,14 @@ static std::string keywords[ num_keywords ] = {
 					"io",
 					"Text",
 					"Number",
+					"nil",
+					"mu",
 				       };
 static int presedens[ num_keywords ] = {
+					24,
+					23,
+					22,
+					21,
 					20,
 					19,
 					18,
@@ -120,7 +132,11 @@ int main()
 			} catch( std::string error ) {
 				std::cout << "Error: " << error << std::endl;
 			}
-			// TO DO: remove the arguments
+			// Remove the arguments
+			if( pos_arguments.size() > 0 ) {
+				statements.erase( statements.begin() + pos_arguments.front(), statements.end() );
+				pos_arguments.clear();
+			}
 			input.clear();
 		}
 		else
@@ -221,7 +237,7 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 	{
 		std::vector<int> bracketPos;
 		if( bracketPos.size() > 0 ) {
-			int pos = bracketPos[ bracketPos.size() - 1 ];
+			int pos = bracketPos.front();
 			int matchingBracket = input[ pos ];
 			switch( input[ i ] )
 			{
@@ -255,11 +271,13 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 			{
 				case keyword::equal:
 				case keyword::notEqual:
-				case keyword::lessSign:
-				case keyword::greaterSign:
+				case keyword::less:
+				case keyword::notLess:
+				case keyword::greater:
+				case keyword::notGreater:
 				case keyword::leadsTo:
 				case keyword::superEqual:
-					// Its a statement construct and add new statement
+					// Its a statement construct, add new statement
 					statement.connection = input[i];
 					for( int l(0); l < i; l++ )
 						statement.left.push_back( input[ l ] );
@@ -316,11 +334,89 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 		throw std::string( "Calculations must be enclosed in brackets" );
 	}
 
-	// TO DO: check for | if found add all the statements found on the right side
-
 	std::vector<int> result = input;
+
+	// Check for | if found add all the statements found on the right side
+	for( int i(1); i < result.size() - 1; i++ )
+		if( result[i] == keyword::where ) {
+			pos_arguments.push_back( statements.size() );
+
+			std::vector<int> temp;
+			std::vector<int> bracketPos;
+			for( int l(0); l < input.size(); l++ )
+			{
+				if( bracketPos.size() > 0 ) {
+					int pos = bracketPos.front();
+					int matchingBracket = input[ pos ];
+					switch( input[ l ] )
+					{
+						case keyword::leftParens:
+						case keyword::leftClammer:
+							bracketPos.push_back( l );
+							break;
+						case keyword::rightParens: 
+						case keyword::rightClammer:
+							if( matchingBracket == input[l] + 1 ) {
+								// Matching clammer
+								break;
+							} else if( matchingBracket
+								== ( input[l] + 1
+									== keyword::rightParens 
+										? keyword::rightClammer 
+										: keyword::rightParens ) ) {
+								// If incompatible keyword found throw error
+								throw std::string( "Incorrect matching bracket" );
+							}
+							bracketPos.pop_back();
+							break;
+						case keyword::not_a_keyword:
+							l = l + input[ l + 1 ] + 1;
+							break;
+						default:
+							break;
+					}
+				} else {
+					switch( input[ l ] )
+					{
+						case keyword::leftParens:
+						case keyword::leftClammer:
+							bracketPos.push_back( i );
+							break;
+						case keyword::rightParens:
+						case keyword::rightClammer:
+							throw std::string( "No matching bracket" );
+						case keyword::comma:
+							// TO DO: check for of by one errors
+							for( int k(i); k < l-1; k++ ) {
+								temp.push_back( result[k] );
+							}
+
+							if( !AddStatement( temp ) )
+								throw std::string( "Right of | must be statements" );
+							temp.clear();
+
+							result.erase( result.begin() + i, result.end() + l );
+							temp.push_back( l - i );
+							i -= temp[0];
+							l -= temp[0];
+							temp.pop_back();
+							break;
+						case keyword::not_a_keyword:
+							l = l + input[ l + 1 ] + 1;
+							break;
+						default:
+							break;
+					}
+				}
+			}
+			break;
+		} else if( result[i] == keyword::not_a_keyword ) {
+			i = i + input[ i + 1 ] + 1;
+		}
+
 	for( int i(1); i < result.size() - 1; i++ )
 	{
+		std::vector<int> presedensPos;
 		std::vector<int> bracketPos;
 		if( bracketPos.size() > 0 ) {
 			int pos = bracketPos[ bracketPos.size() - 1 ];
@@ -360,7 +456,6 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					break;
 			}
 		} else {
-			// TO DO: check for presedens
 			switch( result[i] )
 			{
 				case keyword::temp:
@@ -376,18 +471,27 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 				case keyword::equal:
 				case keyword::notEqual:
 				case keyword::superEqual:
-				case keyword::lessSign:
-				case keyword::greaterSign:
+				case keyword::less:
+				case keyword::notLess:
+				case keyword::greater:
+				case keyword::notGreater:
 				case keyword::leadsTo:
 				case keyword::io:
 				case keyword::text:
 				case keyword::number:
+				case keyword::nil:
+				case keyword::mu:
 					throw std::string( "Ilegal keyword placement" );
 				case keyword::plus:
 				case keyword::minus:
 				case keyword::multiply:
 				case keyword::divide:
-					// TO DO: Add operator calculations
+					// Check presedens
+					if( presedens[ result[i] ] < presedens[ result[presedensPos.back()] ] ) {
+						// TO DO: Add operator calculations
+					} else {
+						presedensPos.push_back( i );
+					}
 					break;
 				case keyword::comma:
 					break;
