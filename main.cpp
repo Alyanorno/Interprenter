@@ -319,6 +319,32 @@ bool AddStatement( std::vector<int>& input ) throw (std::string)
 	return false;
 }
 
+template < class T >
+bool IsNumber( std::string in )
+{
+     std::istringstream stream( in );
+     T t;
+     stream >> t;
+     return !t.fail();
+}
+
+template < class T >
+float ToNumber( std::string in )
+{
+     std::istringstream stream( in );
+     T t;
+     stream >> t;
+     return t;
+}
+
+std::vector<int> Find( std::vector<int>& in )
+{
+	std::vector<int> result;
+	// TO DO: implement
+	// TO DO: If none found found return -1
+	return result;
+}
+
 std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 {
 	// Check that the last and the first is a bracket and of the same type
@@ -456,6 +482,8 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 					break;
 			}
 		} else {
+			std::vector<int> vt;
+			float arg1, arg2;
 			switch( result[i] )
 			{
 				case keyword::temp:
@@ -488,7 +516,24 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 				case keyword::divide:
 					// Check presedens
 					if( presedens[ result[i] ] < presedens[ result[presedensPos.back()] ] ) {
+						// TO DO: find arg1 and arg2 and remove them from result
 						// TO DO: Add operator calculations
+						switch( result[i] )
+						{
+							case keyword::plus:
+								arg1 = arg1 + arg2;
+								break;
+							case keyword::minus:
+								arg1 = arg1 - arg2;
+								break;
+							case keyword::multiply:
+								arg1 = arg1 * arg2;
+								break;
+							case keyword::divide:
+								arg1 = arg1 / arg2;
+								break;
+						}
+						// TO DO: Add arg1 to result
 					} else {
 						presedensPos.push_back( i );
 					}
@@ -496,7 +541,14 @@ std::vector<int> Calculate( std::vector<int>& input ) throw(std::string)
 				case keyword::comma:
 					break;
 				case keyword::not_a_keyword:
-					// TO DO: Search to find what it is and replace with what it is
+					for( int l(i+2); l < result[ i + 1 ]; l++ )
+						vt.push_back( result[l] );
+					vt = Find( vt );
+					if( vt[0] != -1 )
+					{
+						// TO DO: Insert found into result
+					}
+					vt.clear();
 					i = i + result[ i + 1 ] + 1;
 					break;
 				default:
